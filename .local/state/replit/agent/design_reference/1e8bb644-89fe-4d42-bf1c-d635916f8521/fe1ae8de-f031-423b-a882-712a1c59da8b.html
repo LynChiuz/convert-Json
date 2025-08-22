@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word to Text Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    'inter': ['Inter', 'sans-serif'],
+                },
+                colors: {
+                    primary: '#3B82F6',
+                    secondary: '#10B981',
+                    accent: '#F59E0B',
+                    error: '#EF4444',
+                }
+            }
+        }
+    };
+    </script>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    
+    <!-- @COMPONENT: Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-file-word text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-900">Word to Text Converter</h1>
+                        <p class="text-sm text-gray-500">Convert your Word documents to plain text</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-sm text-gray-500">
+                        <span data-bind="processedFiles">0</span> files processed
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        
+        <!-- @COMPONENT: UploadSection -->
+        <div class="grid lg:grid-cols-2 gap-8">
+            <div class="space-y-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Upload Document</h2>
+                    <p class="text-gray-600">Upload your Word document (.docx) to extract text content. Supports files up to 200+ pages.</p>
+                </div>
+
+                <!-- Drag and Drop Zone -->
+                <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary hover:bg-blue-50 transition-all duration-300 cursor-pointer" 
+                     data-event="drop:handleFileDrop,click:openFileDialog">
+                    <div class="space-y-4">
+                        <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-lg font-medium text-gray-700">Drag and drop your Word file here</p>
+                            <p class="text-sm text-gray-500 mt-1">or click to browse files</p>
+                        </div>
+                        <div class="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Supports .docx files up to 50MB</span>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden" accept=".docx" data-implementation="Handle file selection">
+                </div>
+
+                <!-- File Preview -->
+                <div id="filePreview" class="hidden bg-white rounded-xl border border-gray-200 p-4" data-mock="true">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-word text-primary text-lg"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-gray-900 truncate" data-bind="file.name">Document_Sample.docx</p>
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span data-bind="file.size">2.4 MB</span>
+                                <span data-bind="file.pages">185 pages</span>
+                            </div>
+                        </div>
+                        <button class="text-gray-400 hover:text-error transition-colors" data-event="click:removeFile">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Processing Progress -->
+                <div id="processingProgress" class="hidden bg-white rounded-xl border border-gray-200 p-6" data-mock="true">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-gray-900">Processing Document</span>
+                            <span class="text-sm text-gray-500" data-bind="progress.percentage">45%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 45%" data-bind="progress.bar"></div>
+                        </div>
+                        <div class="flex items-center space-x-2 text-sm text-gray-600">
+                            <i class="fas fa-cog fa-spin text-primary"></i>
+                            <span data-bind="progress.status">Extracting text from pages 89-95...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-4">
+                    <button id="convertBtn" class="flex-1 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed" 
+                            data-event="click:startConversion" disabled>
+                        <i class="fas fa-play-circle mr-2"></i>
+                        Convert to Text
+                    </button>
+                    <button id="clearBtn" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors" 
+                            data-event="click:clearFiles">
+                        <i class="fas fa-trash-alt mr-2"></i>
+                        Clear
+                    </button>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: UploadSection -->
+
+            <!-- @COMPONENT: ResultSection -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Extracted Text</h2>
+                        <p class="text-gray-600">Preview and download your converted text</p>
+                    </div>
+                    <div id="resultActions" class="hidden flex items-center space-x-3" data-mock="true">
+                        <button class="px-4 py-2 text-sm bg-secondary text-white rounded-lg hover:bg-emerald-600 transition-colors" 
+                                data-event="click:downloadText">
+                            <i class="fas fa-download mr-2"></i>
+                            Download TXT
+                        </button>
+                        <button class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors" 
+                                data-event="click:copyToClipboard">
+                            <i class="fas fa-copy mr-2"></i>
+                            Copy Text
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Text Preview Area -->
+                <div id="textPreview" class="bg-white rounded-xl border border-gray-200 min-h-[500px]">
+                    <!-- Empty State -->
+                    <div id="emptyState" class="flex flex-col items-center justify-center h-[500px] text-gray-400">
+                        <i class="fas fa-file-alt text-6xl mb-4"></i>
+                        <p class="text-lg font-medium">No document converted yet</p>
+                        <p class="text-sm">Upload and convert a Word document to see the extracted text here</p>
+                    </div>
+
+                    <!-- Text Content (Hidden by default) -->
+                    <div id="textContent" class="hidden p-6" data-mock="true">
+                        <div class="space-y-4">
+                            <!-- Text Stats -->
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+                                <div class="flex items-center space-x-6 text-sm text-gray-600">
+                                    <div>
+                                        <span class="font-medium" data-bind="stats.words">12,847</span>
+                                        <span>words</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium" data-bind="stats.characters">78,392</span>
+                                        <span>characters</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium" data-bind="stats.pages">185</span>
+                                        <span>pages</span>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    Converted in <span data-bind="stats.conversionTime">2.3s</span>
+                                </div>
+                            </div>
+
+                            <!-- Text Display -->
+                            <div class="prose max-w-none">
+                                <div class="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto text-sm leading-relaxed text-gray-800" data-bind="extractedText">
+                                    <!-- Sample extracted text content -->
+                                    <p class="mb-4"><strong>Chapter 1: Introduction to Document Processing</strong></p>
+                                    <p class="mb-4">Document processing has become an essential part of modern business workflows. With the increasing volume of digital documents, organizations need efficient ways to extract, analyze, and utilize textual information from various file formats.</p>
+                                    <p class="mb-4">The Word to Text conversion process involves several key steps: file parsing, content extraction, formatting preservation, and output generation. Each step requires careful handling to ensure accuracy and maintain the integrity of the original document's information.</p>
+                                    <p class="mb-4">Modern document processing tools utilize advanced algorithms to handle complex document structures, including tables, headers, footers, and embedded objects. This technology enables seamless integration of document content into various applications and workflows.</p>
+                                    <p class="mb-4"><strong>Key Benefits of Text Extraction:</strong></p>
+                                    <p class="mb-2">• Improved searchability and indexing</p>
+                                    <p class="mb-2">• Enhanced content analysis capabilities</p>
+                                    <p class="mb-2">• Streamlined data migration processes</p>
+                                    <p class="mb-2">• Better accessibility for screen readers</p>
+                                    <p class="mb-4">The following sections will explore the technical implementation details and best practices for document conversion workflows...</p>
+                                </div>
+                            </div>
+
+                            <!-- Quality Indicator -->
+                            <div class="flex items-center space-x-2 text-sm">
+                                <div class="flex items-center space-x-1">
+                                    <i class="fas fa-check-circle text-secondary"></i>
+                                    <span class="text-gray-600">Conversion completed successfully</span>
+                                </div>
+                                <div class="flex items-center space-x-1 text-gray-500">
+                                    <span>•</span>
+                                    <span data-bind="stats.accuracy">98.7% accuracy</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: ResultSection -->
+        </div>
+
+        <!-- @COMPONENT: FeaturesSection -->
+        <div class="mt-16 bg-white rounded-2xl border border-gray-200 p-8">
+            <div class="text-center mb-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">Why Choose Our Word to Text Converter?</h3>
+                <p class="text-gray-600">Professional-grade document processing with enterprise-level reliability</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center space-y-4">
+                    <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-lightning-bolt text-primary text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900">Fast Processing</h4>
+                    <p class="text-gray-600">Convert large documents (200+ pages) in seconds with optimized processing algorithms</p>
+                </div>
+
+                <div class="text-center space-y-4">
+                    <div class="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-shield-alt text-secondary text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900">Secure & Private</h4>
+                    <p class="text-gray-600">Your documents are processed locally and never stored on our servers</p>
+                </div>
+
+                <div class="text-center space-y-4">
+                    <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-magic text-accent text-2xl"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-gray-900">High Accuracy</h4>
+                    <p class="text-gray-600">Advanced text extraction maintains formatting and preserves document structure</p>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: FeaturesSection -->
+
+    </main>
+
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-gray-900 text-white mt-16">
+        <div class="max-w-6xl mx-auto px-4 py-12">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-word text-white"></i>
+                        </div>
+                        <span class="font-bold text-lg">Word to Text</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">Professional document conversion tool for businesses and individuals.</p>
+                </div>
+
+                <div>
+                    <h5 class="font-semibold mb-4">Features</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Bulk Conversion</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">API Access</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Format Preservation</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Progress Tracking</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="font-semibold mb-4">Support</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">FAQ</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Contact Us</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Report Issues</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="font-semibold mb-4">Company</h5>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">About</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">&copy; 2024 Word to Text Converter. All rights reserved.</p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <!-- @STATE: uploadedFile:File = null -->
+    <!-- @STATE: isProcessing:boolean = false -->
+    <!-- @STATE: extractedText:string = "" -->
+    <!-- @STATE: processingProgress:number = 0 -->
+
+    <script>
+        // TODO: Implement file upload functionality
+        // TODO: Integrate with Express.js backend API
+        // TODO: Handle file conversion using mammoth.js
+        // TODO: Implement progress tracking and status updates
+        
+        (function() {
+            // Mock demo functionality for UI interactions
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const filePreview = document.getElementById('filePreview');
+            const processingProgress = document.getElementById('processingProgress');
+            const textContent = document.getElementById('textContent');
+            const emptyState = document.getElementById('emptyState');
+            const convertBtn = document.getElementById('convertBtn');
+            const resultActions = document.getElementById('resultActions');
+
+            // File drop zone interactions
+            dropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-primary', 'bg-blue-50');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-primary', 'bg-blue-50');
+            });
+
+            // Mock file selection
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    showFilePreview();
+                    convertBtn.disabled = false;
+                    convertBtn.classList.remove('disabled:bg-gray-300');
+                }
+            });
+
+            // Mock conversion process
+            convertBtn.addEventListener('click', () => {
+                startMockConversion();
+            });
+
+            function showFilePreview() {
+                filePreview.classList.remove('hidden');
+                dropZone.classList.add('hidden');
+            }
+
+            function startMockConversion() {
+                filePreview.classList.add('hidden');
+                processingProgress.classList.remove('hidden');
+                
+                // Simulate processing
+                setTimeout(() => {
+                    processingProgress.classList.add('hidden');
+                    showResults();
+                }, 3000);
+            }
+
+            function showResults() {
+                emptyState.classList.add('hidden');
+                textContent.classList.remove('hidden');
+                resultActions.classList.remove('hidden');
+            }
+
+            // Copy to clipboard functionality
+            document.querySelector('[data-event*="copyToClipboard"]').addEventListener('click', () => {
+                // TODO: Implement copy to clipboard functionality
+                alert('Text copied to clipboard!');
+            });
+        })();
+    </script>
+</body>
+</html>
